@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.open-next/
+.wrangler/
+.wrangler.local.jsonc
+next-env.d.ts
+*.tsbuildinfo
+.dev.vars
+.env*
+!.env
+.wrangler.deploy.*
+dist/
+coverage/
+docs/tmp/
+*.log

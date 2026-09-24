@@ -1,0 +1,40 @@
+{
+  "name": "verify",
+  "version": "1.0.0",
+  "description": "IT部のメールリンク認証サービス",
+  "type": "module",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare preview",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run && node --test checks/config.mjs checks/secrets-store.mjs",
+    "deploy:check": "pnpm build:worker && wrangler deploy --dry-run",
+    "deploy:config:check": "dotenvx run --no-native --no-armor --strict -- node scripts/deploy.mjs --check",
+    "deploy": "pnpm build:worker && dotenvx run --no-native --no-armor --strict -- node scripts/deploy.mjs",
+    "db:schema:local": "wrangler d1 execute DB --local --config wrangler.test.jsonc --file schema.sql",
+    "cf-typegen": "wrangler types --strict-vars=false"
+  },
+  "keywords": [],
+  "packageManager": "pnpm@11.15.1",
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.3.6",
+    "@dotenvx/dotenvx": "^2.30.0",
+    "@types/node": "^26.6.2",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "1.20.6",
+    "next": "16.3.6",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  }
+}

@@ -1,0 +1,2 @@
+AUTH_EMAIL_ALLOW_REGEX=^[^@]+@example\.org$
+HMAC_SECRET=replace-with-a-random-persistent-32-byte-secret

@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "verify",
+  "main": "custom-worker.ts",
+  "compatibility_date": "2026-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [{ "pattern": "verify.tmedit.org", "custom_domain": true }],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "d1_databases": [{ "binding": "DB", "database_name": "verify" }],
+  "ratelimits": [
+    { "name": "FLOW_START_IP", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } },
+    { "name": "FLOW_START_BROWSER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } },
+    { "name": "REQUEST_LINK_IP", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
+    { "name": "REQUEST_LINK_BROWSER", "namespace_id": "1004", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@verify.tmedit.org"] }],
+  "secrets_store_secrets": [
+    { "binding": "CLIENT_SECRET_MAIN", "store_id": "00000000000000000000000000000000", "secret_name": "CLIENT_SECRET_MAIN" },
+    { "binding": "CLIENT_SECRET_ATND", "store_id": "00000000000000000000000000000000", "secret_name": "CLIENT_SECRET_ATND" },
+    { "binding": "CLIENT_SECRET_CS", "store_id": "00000000000000000000000000000000", "secret_name": "CLIENT_SECRET_CS" }
+  ],
+  "triggers": { "crons": ["0 3 * * *"] },
+  "vars": { "PUBLIC_ORIGIN": "https://verify.tmedit.org" },
+  "secrets": { "required": ["AUTH_EMAIL_ALLOW_REGEX", "HMAC_SECRET"] },
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
+}
