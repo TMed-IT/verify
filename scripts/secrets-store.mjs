@@ -42,8 +42,12 @@ export async function ensureClientSecrets({ accountId, apiToken, fetchImpl = fet
   }
 
   function selectStore(stores) {
+    if (stores.length === 1) return stores[0];
     const named = stores.filter((item) => item.name === storeName);
     if (named.length > 1) throw new Error(`${storeName} という Secrets Store が複数あります`);
+    if (stores.length > 1 && named.length === 0) {
+      throw new Error(`Secrets Store が複数あり選択できません。使用する Store の名前を ${storeName} にしてください`);
+    }
     return named[0] ?? null;
   }
 

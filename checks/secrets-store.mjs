@@ -81,20 +81,44 @@ test("複数 Store がある場合は対象名の Store を選ぶ", async () => 
   assert.equal(writes, 0);
 });
 
-test("別名の Store が一つだけあっても verify を作成する", async () => {
-  let created = false;
+test("別名の既存 Store で MAIN の secret だけを作成し、既存値を維持する", async () => {
+  const secrets = new Map([
+    ["CLIENT_SECRET_ATND", "existing-atnd-secret"],
+    ["CLIENT_SECRET_CS", "existing-cs-secret"],
+  ]);
+  const original = new Map(secrets);
+  const created = [];
   const fetchImpl = async (url, options) => {
     const path = new URL(url).pathname;
     if (path.endsWith("/stores")) {
-      if (options.method === "GET") return ok([{ id: "c".repeat(32), name: "unrelated" }]);
-      assert.deepEqual(JSON.parse(options.body), { name: "verify" });
-      created = true;
-      return ok({ id: storeId, name: "verify" });
+      assert.equal(options.method, "GET");
+      return ok([{ id: storeId, name: "existing-store" }]);
     }
     assert.ok(path.endsWith(`/${storeId}/secrets`));
-    assert.equal(options.method, "GET");
-    return ok(clientSecretNames.map((name) => ({ name, status: "active", scopes: ["workers"] })));
+    if (options.method === "GET") {
+      return ok([...secrets.keys()].map((name) => ({ name, status: "active", scopes: ["workers"] })));
+    }
+    assert.equal(options.method, "POST");
+    const [entry] = JSON.parse(options.body);
+    assert.equal(entry.name, "CLIENT_SECRET_MAIN");
+    assert.deepEqual(entry.scopes, ["workers"]);
+    assert.match(entry.value, /^[A-Za-z0-9_-]{64}$/);
+    secrets.set(entry.name, entry.value);
+    created.push(entry.name);
+    return ok([{ name: entry.name, scopes: ["workers"], status: "pending" }]);
   };
   assert.equal(await ensureClientSecrets({ ...credentials, fetchImpl }), storeId);
-  assert.equal(created, true);
+  assert.equal(await ensureClientSecrets({ ...credentials, fetchImpl }), storeId);
+  assert.deepEqual(created, ["CLIENT_SECRET_MAIN"]);
+  for (const [name, value] of original) assert.equal(secrets.get(name), value);
+  assert.equal(secrets.size, 3);
+});
+
+test("複数の別名 Store がある場合は選択できず、書き込まない", async () => {
+  const fetchImpl = async (url, options) => {
+    assert.equal(options.method, "GET");
+    assert.ok(new URL(url).pathname.endsWith("/stores"));
+    return ok([{ id: storeId, name: "first" }, { id: "c".repeat(32), name: "second" }]);
+  };
+  await assert.rejects(ensureClientSecrets({ ...credentials, fetchImpl }), /選択できません/);
 });

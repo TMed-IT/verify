@@ -113,9 +113,9 @@ pnpm exec dotenvx encrypt --no-native --no-armor -f .env
 
 ### client secret は Secrets Store で管理する
 
-配備スクリプトが Cloudflare Secrets Store を調べ、`verify` という Store を選びます。同名の Store がなければ作成します。
+配備スクリプトが Cloudflare Secrets Store を調べ、既存の Store が1つあれば名前によらず再利用します。Store がなければ `verify` という名前で作成します。複数ある場合は `verify` を選び、選択できなければ配備を停止します。
 
-`CLIENT_SECRET_MAIN`、`CLIENT_SECRET_ATND`、`CLIENT_SECRET_CS` がなければ、それぞれ独立した64文字のランダム値を `workers` scope で作成します。既存の secret は維持します。Store ID は配備時に取得して binding に設定するため、リポジトリの `wrangler.jsonc` に本番 ID を手で書く必要はありません。
+`CLIENT_SECRET_MAIN`、`CLIENT_SECRET_ATND`、`CLIENT_SECRET_CS` がなければ、それぞれ独立した64文字のランダム値を `workers` scope で作成します。既存の secret とその値は維持します。Store ID は配備時に取得して binding に設定するため、リポジトリの `wrangler.jsonc` に本番 ID を手で書く必要はありません。
 
 連携先 Worker も同じアカウントの Secrets Store に binding を設定し、対応する secret を読み取ります。本番の client secret は `.env`、`.dev.vars`、GitHub Secrets、ログには保存しません。
 
