@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import { resolve } from "node:path";
 
+const htmlLoader = resolve("scripts/html-loader.cjs");
+
 const development = process.env.NODE_ENV === "development";
 const securityHeaders = [
   { key: "Content-Security-Policy", value: [
@@ -23,7 +25,11 @@ const securityHeaders = [
 const config: NextConfig = {
   agentRules: false,
   images: { unoptimized: true },
-  turbopack: { rules: { "*.html": { type: "raw" } } },
+  turbopack: { rules: { "*.html": { loaders: [htmlLoader], as: "*.js" } } },
+  webpack(config) {
+    config.module.rules.push({ test: /\.html$/, use: [htmlLoader] });
+    return config;
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

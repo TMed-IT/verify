@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "next build",
-    "build:worker": "node scripts/build.mjs",
+    "build:worker": "node scripts/build.mjs && node --test checks/built-email.mjs",
     "preview": "opennextjs-cloudflare preview",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run && node --test checks/config.mjs checks/secrets-store.mjs checks/auth-tabs.mjs",
