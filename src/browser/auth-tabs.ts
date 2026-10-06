@@ -1,8 +1,7 @@
-const callbacks = new Set([
-  "https://tmedit.org/auth/verify/callback",
-  "https://atnd.tmedit.org/auth/verify/callback",
-  "https://cs.tmedit.org/auth/verify/callback",
-]);
+import siteConfig from "../config.mjs";
+
+const callbacks = new Set(Object.values(siteConfig.clients)
+  .map((client) => `${client.origin}${siteConfig.auth.callbackPath}`));
 
 function validRedirect(value: unknown): value is string {
   if (value === "/verified") return true;

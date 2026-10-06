@@ -60,6 +60,12 @@ async function deploy({ checkOnly = false, env = process.env } = {}) {
       config.d1_databases?.length !== 1 || config.d1_databases[0].binding !== "DB") {
     throw new Error("wrangler.jsonc の Worker または D1 設定が想定と異なります");
   }
+  if (config.routes?.length !== 1 || config.vars?.PUBLIC_ORIGIN !== `https://${config.routes[0].pattern}` ||
+      config.send_email?.length !== 1 || config.send_email[0].name !== "EMAIL" ||
+      config.send_email[0].allowed_sender_addresses?.length !== 1 ||
+      !config.vars?.EMAIL_FROM || config.send_email[0].allowed_sender_addresses[0] !== config.vars.EMAIL_FROM) {
+    throw new Error("wrangler.jsonc のドメインまたはメール送信元が vars と一致しません");
+  }
   if (new Set(config.secrets?.required).size !== secretNames.length ||
       !secretNames.every((name) => config.secrets.required.includes(name))) {
     throw new Error("wrangler.jsonc の secrets.required が配備用 secret と一致しません");

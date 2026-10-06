@@ -1,22 +1,21 @@
+import { timingSafeEqual } from "node:crypto";
+import siteConfig from "./config.mjs";
+
 export const LINK_SECONDS = 5 * 60;
 export const FLOW_SECONDS = 15 * 60;
 export const CODE_SECONDS = 5 * 60;
 export const IDLE_SECONDS = 30 * 24 * 60 * 60;
 export const MAX_SECONDS = 90 * 24 * 60 * 60;
 
-export const CLIENTS = {
-  tmedit: { origin: "https://tmedit.org", secret: "CLIENT_SECRET_MAIN" },
-  atnd: { origin: "https://atnd.tmedit.org", secret: "CLIENT_SECRET_ATND" },
-  cs: { origin: "https://cs.tmedit.org", secret: "CLIENT_SECRET_CS" },
-} as const;
+export const CLIENTS = siteConfig.clients;
 
 export type ClientId = keyof typeof CLIENTS;
 
-export function clientFor(id: string): { id: ClientId; origin: string; redirectUri: string; secretName: string } | null {
+export function clientFor(id: string) {
   if (!Object.hasOwn(CLIENTS, id)) return null;
   const key = id as ClientId;
   const client = CLIENTS[key];
-  return { id: key, origin: client.origin, redirectUri: `${client.origin}/auth/verify/callback`, secretName: client.secret };
+  return { id: key, origin: client.origin, redirectUri: `${client.origin}${siteConfig.auth.callbackPath}`, secretName: client.secret };
 }
 
 export function validRedirect(clientId: string, value: string): boolean {
@@ -78,4 +77,3 @@ export async function secureEqual(a: string, b: string): Promise<boolean> {
   const [left, right] = await Promise.all([crypto.subtle.digest("SHA-256", new TextEncoder().encode(a)), crypto.subtle.digest("SHA-256", new TextEncoder().encode(b))]);
   return timingSafeEqual(Buffer.from(left), Buffer.from(right));
 }
-import { timingSafeEqual } from "node:crypto";

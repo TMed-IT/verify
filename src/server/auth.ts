@@ -4,6 +4,7 @@ import {
   sessionActive, sha256, validChallenge, validRedirect, validState,
 } from "../policy";
 import { verificationEmail } from "./email";
+import siteConfig from "../config.mjs";
 
 type Flow = {
   id: string;
@@ -56,11 +57,11 @@ function originAllowed(request: Request, env: Env): boolean {
   const origin = request.headers.get("Origin");
   if (!origin) return false;
   if (origin === env.PUBLIC_ORIGIN) return true;
-  return Object.values(["tmedit", "atnd", "cs"]).some(id => clientFor(id)?.origin === origin);
+  return Object.values(siteConfig.clients).some(client => client.origin === origin);
 }
 function cors(request: Request): HeadersInit {
   const origin = request.headers.get("Origin");
-  return origin && ["tmedit", "atnd", "cs"].some(id => clientFor(id)?.origin === origin)
+  return origin && Object.values(siteConfig.clients).some(client => client.origin === origin)
     ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true", "Vary": "Origin" }
     : {};
 }
@@ -191,7 +192,7 @@ async function sendLink(request: Request, env: Env, ctx: ExecutionContext): Prom
   ctx.waitUntil((async () => {
     try {
       await env.EMAIL.send({
-        from: "noreply@verify.tmedit.org",
+        from: env.EMAIL_FROM,
         to: email,
         ...verificationEmail(link, LINK_SECONDS),
       });
@@ -324,7 +325,7 @@ async function authenticateClient(input: Record<string, unknown> | null, env: En
   if (!clientId || !givenSecret) return null;
   const client = clientFor(clientId);
   if (!client) return null;
-  const binding = env[client.secretName as "CLIENT_SECRET_MAIN" | "CLIENT_SECRET_ATND" | "CLIENT_SECRET_CS"];
+  const binding = env[client.secretName];
   const expected = await binding.get();
   if (typeof expected !== "string" || expected.length < 32 || !(await secureEqual(givenSecret, expected))) return null;
   return client;
@@ -393,8 +394,10 @@ async function logout(request: Request, env: Env): Promise<Response> {
 }
 
 function validateConfig(env: Env): void {
-  if (!env.AUTH_EMAIL_ALLOW_REGEX || !env.HMAC_SECRET || env.HMAC_SECRET.length < 32 || !env.PUBLIC_ORIGIN) throw new Error("missing auth configuration");
-  if (env.PUBLIC_ORIGIN !== "https://verify.tmedit.org" && !/^http:\/\/localhost:\d{2,5}$/.test(env.PUBLIC_ORIGIN)) throw new Error("invalid public origin");
+  if (!env.AUTH_EMAIL_ALLOW_REGEX || !env.HMAC_SECRET || env.HMAC_SECRET.length < 32 || !env.PUBLIC_ORIGIN || !env.EMAIL_FROM) throw new Error("missing auth configuration");
+  const origin = new URL(env.PUBLIC_ORIGIN);
+  if (origin.origin !== env.PUBLIC_ORIGIN ||
+      (origin.protocol !== "https:" && !/^http:\/\/localhost:\d{2,5}$/.test(env.PUBLIC_ORIGIN))) throw new Error("invalid public origin");
   // Fail closed on a malformed pattern before accepting a send request.
   allowedEmail("probe@example.org", env.AUTH_EMAIL_ALLOW_REGEX);
 }

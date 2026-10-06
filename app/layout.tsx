@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import siteConfig from "@/src/config.mjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "学生ステータスを確認 | IT部",
-  icons: { icon: "/internal.svg" },
+  title: `学生ステータスを確認 | ${siteConfig.brand.organizationName}`,
+  icons: { icon: siteConfig.brand.logoPath },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
+import siteConfig from "../src/config.mjs";
 
-export const clientSecretNames = ["CLIENT_SECRET_MAIN", "CLIENT_SECRET_ATND", "CLIENT_SECRET_CS"];
+export const clientSecretNames = Object.values(siteConfig.clients).map((client) => client.secret);
 const storeName = "verify";
 const idPattern = /^[0-9a-f]{32}$/i;
 

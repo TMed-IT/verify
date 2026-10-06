@@ -22,7 +22,12 @@
     { "binding": "CLIENT_SECRET_CS", "store_id": "00000000000000000000000000000000", "secret_name": "CLIENT_SECRET_CS" }
   ],
   "triggers": { "crons": ["0 3 * * *"] },
-  "vars": { "PUBLIC_ORIGIN": "https://verify.tmedit.org" },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://verify.tmedit.org",
+    "EMAIL_FROM": "noreply@verify.tmedit.org",
+    "TERMS_URL": "https://tmedit.org/internal/terms",
+    "PRIVACY_POLICY_URL": "https://tmedit.org/internal/privacy"
+  },
   "secrets": { "required": ["AUTH_EMAIL_ALLOW_REGEX", "HMAC_SECRET"] },
   "observability": { "enabled": true, "head_sampling_rate": 0.1 }
 }

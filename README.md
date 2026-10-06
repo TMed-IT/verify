@@ -67,7 +67,11 @@ pnpm run deploy:check
 
 画面は `app/` と `components/`、認証 API は `app/auth/` の Route Handler と `src/server/` にあります。`custom-worker.ts` は OpenNext の Worker に、D1 の期限切れデータを毎日削除する処理を追加します。
 
-確認メールのHTMLは `src/server/templates/verification.html` にあります。送信時に `{{LINK}}` を確認リンク、`{{MINUTES}}` を有効期間の分数に置換します。文言やデザインはこのファイルを編集してください。テキスト版は `src/server/email.ts` で管理します。
+規約・プライバシーポリシーのURL、認証ホスト、送信元は `wrangler.jsonc` の `vars` で管理します。画面で使う公開情報はビルド時に取り込みます。ブランド名とロゴのパスは `src/config.mjs`、ロゴは `public/brand.svg` にあります。変更後は再ビルド・再配備してください。配備スクリプトでドメインと送信元の binding 設定との一致を確認します。
+
+確認メールのHTMLは `src/server/templates/verification.html` にあります。送信時に `{{LINK}}` を確認リンク、`{{MINUTES}}` を有効期間の分数、`{{ORGANIZATION_NAME}}` をブランド名に置換します。文言やデザインはこのファイルを編集してください。テキスト版は `src/server/email.ts` で管理します。
+
+Worker のビルド時には、本番ビルドの Route Handler からHTMLメールを組み立て、送信処理まで到達することを確認します。検証では送信先とデータベースを模擬するため、実際のメールは送信しません。
 
 ## 本番に配備する
 

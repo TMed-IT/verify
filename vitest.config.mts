@@ -14,6 +14,7 @@ export default defineConfig({
   }, cloudflareTest(async () => ({
     wrangler: { configPath: "./wrangler.test.jsonc" },
     miniflare: { bindings: {
+      ...JSON.parse(await readFile(new URL("./wrangler.jsonc", import.meta.url), "utf8")).vars,
       TEST_SCHEMA: await readFile(new URL("./schema.sql", import.meta.url), "utf8"),
       PUBLIC_ORIGIN: "http://localhost:3000",
       AUTH_EMAIL_ALLOW_REGEX: "^[^@]+@example\\.org$",
