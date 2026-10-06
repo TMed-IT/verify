@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Shell } from "@/components/shell";
+import { listenForAuthCompletion } from "@/src/browser/auth-tabs";
 
 type View = "checking" | "form" | "existing" | "sent" | "invalid" | "error";
 
@@ -41,6 +42,11 @@ export default function StartPage() {
     setFlow(id);
     void checkFlow(id);
   }, []);
+
+  useEffect(() => {
+    if (!flow) return;
+    return listenForAuthCompletion(flow, (redirect) => window.location.assign(redirect));
+  }, [flow]);
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

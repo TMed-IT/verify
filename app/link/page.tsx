@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { handoffAuthCompletion } from "@/src/browser/auth-tabs";
 
-type View = "checking" | "ready" | "other" | "invalid" | "error";
+type View = "checking" | "ready" | "other" | "invalid" | "error" | "complete";
 type LinkStatus = "ready" | "other_browser" | "invalid";
 
 export default function LinkPage() {
@@ -52,6 +53,14 @@ export default function LinkPage() {
     }
   }
 
+  function closeTab() {
+    try {
+      window.close();
+    } catch {
+      setMessage("自動で閉じられませんでした。このタブを閉じ、元のタブに戻ってください。");
+    }
+  }
+
   async function confirm() {
     setBusy(true);
     setMessage("");
@@ -63,7 +72,13 @@ export default function LinkPage() {
       const result = await response.json() as { redirect?: string };
       if (response.ok && result.redirect) {
         window.history.replaceState(null, "", `/link?flow=${encodeURIComponent(flow)}`);
-        window.location.assign(result.redirect);
+        setToken("");
+        if (await handoffAuthCompletion(flow, result.redirect)) {
+          setView("complete");
+          closeTab();
+        } else {
+          window.location.assign(result.redirect);
+        }
       } else if (response.status === 409) {
         await checkLink(flow, token);
       } else if (response.status >= 500 || response.ok) {
@@ -101,6 +116,12 @@ export default function LinkPage() {
         <div>
           <div className="notice warning"><span className="notice-icon" aria-hidden="true">!</span><div><strong>リンクを確認できませんでした</strong><p>通信状態を確認して、もう一度お試しください。</p></div></div>
           <button type="button" onClick={() => window.location.reload()}>再試行</button>
+        </div>
+      )}
+      {view === "complete" && (
+        <div>
+          <div className="notice"><span className="notice-icon" aria-hidden="true">✓</span><div><strong>確認が完了しました</strong><p>元のタブで認証を続けています。このタブは閉じてください。</p></div></div>
+          <button type="button" onClick={closeTab}>このタブを閉じる</button>
         </div>
       )}
       <p className="message" role="alert">{message}</p>
