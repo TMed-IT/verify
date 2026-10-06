@@ -1,16 +1,14 @@
 # IT部 学生ステータス確認
 
-大学から付与されたメールアドレスの受信確認を行う認証サービスです。`verify.tmedit.org` で動作し、`tmedit.org`、`atnd.tmedit.org`、`cs.tmedit.org` と連携します。Next.js を使い、OpenNext で Cloudflare Workers に配備します。画面のロゴと配色は既存の `auth` に合わせています。
+大学から付与されたメールアドレスの受信確認を行う認証サービスです。`verify.tmedit.org` で動作します。Next.js を使い、OpenNext で Cloudflare Workers に配備します。画面のロゴと配色は既存の `auth` に合わせています。
 
 メールリンクで確認できるのは、そのアドレスでメールを受け取れることです。実在する人物の本人性は確認できません。低リスクの参加確認を想定しており、高い保証が必要な認証には使いません（[NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b.html)）。
 
 ## メールリンクで認証する
 
-1. 連携先が、開始時と戻り時の対応を確認する `state` と、認可コードの横取りを防ぐ PKCE S256 の値を作ります。ブラウザを `GET /auth/authorize` に転送し、認証を開始します。戻り先は各連携先の HTTPS `/auth/verify/callback` に固定しています。
-2. 認証サービスがブラウザを識別する Cookie を設定します。入力されたメールアドレスの形式を検査し、`AUTH_EMAIL_ALLOW_REGEX` に全体一致した場合だけ確認リンクを送ります。送信を受け付けるのは、認証開始から15分までです。対象外のアドレスや送信制限を超えた場合も、応答は同じ `{ "ok": true }` です。
-3. 確認リンクには、ランダムな検証値を URL の `#` 以降（フラグメント）に入れます。リンクを開くだけでは認証は完了しません。認証を始めたブラウザで、送信から5分以内に確認ボタンを押すと、一度だけ使用できます。別のブラウザで開いた場合は、完全な URL をコピーして元のブラウザで開くよう案内します。認証フロー全体の有効期間は最長20分です。
-4. 確認が完了すると、認証サービスが有効期間5分の認可コードと元の `state` を連携先に返します。連携先サーバーは共有の秘密値（client secret）と PKCE verifier を使い、`POST /auth/token` でコードをトークンに交換します。交換できるのは一度だけです。
-5. 連携先はトークンを、自分のホストでのみ使える HttpOnly・Secure Cookie に保存します。保護対象の各リクエストで `POST /auth/introspect` を呼び、トークンが有効か確認します。応答は `{ "active": boolean }` だけです。
+1. トップページから認証を開始すると、ブラウザを識別する Cookie を設定します。入力されたメールアドレスの形式を検査し、`AUTH_EMAIL_ALLOW_REGEX` に全体一致した場合だけ確認リンクを送ります。送信を受け付けるのは、認証開始から15分までです。対象外のアドレスや送信制限を超えた場合も、応答は同じ `{ "ok": true }` です。
+2. 確認リンクには、ランダムな検証値を URL の `#` 以降（フラグメント）に入れます。リンクを開くだけでは認証は完了しません。認証を始めたブラウザで、送信から5分以内に確認ボタンを押すと、一度だけ使用できます。別のブラウザで開いた場合は、完全な URL をコピーして元のブラウザで開くよう案内します。認証フロー全体の有効期間は最長20分です。
+3. 確認が完了すると、認証を始めたタブに完了画面を表示し、確認リンク側のタブは自動で閉じます。ブラウザが自動で閉じることを許可しない場合は、手動で閉じるよう案内します。元のタブがない場合は、確認リンク側に完了画面を表示します。
 
 ### 保存する情報
 
@@ -18,17 +16,17 @@
 
 メールアドレスは ASCII の通常の形式を対象とします。前後の空白を除き、`@` より前の部分も含めて小文字に揃えます。この正規化規則や HMAC 鍵を変更すると、同じメールでも保存済みの識別値と一致しなくなるため、運用中は維持してください。
 
-連携先に渡すトークンは、連携先ごとに異なる値です。メールアドレスや共通の匿名 ID は返しません。`GET /me` も `{ "authenticated": boolean }` だけを返します。
+API はメールアドレスや共通の匿名 ID を返しません。`GET /me` も `{ "authenticated": boolean }` だけを返します。
 
 ### 認証は最大3ブラウザ、最長90日
 
-同じメールで認証できるのは最大3ブラウザです。4台目を認証すると、最終利用が最も古いブラウザのセッションと、そのブラウザに紐づく全連携先のトークンを削除します。同じブラウザで再確認しても枠は増えません。再確認前の連携先トークンは失効します。
+同じメールで認証できるのは最大3ブラウザです。4台目を認証すると、最終利用が最も古いブラウザのセッションと、そのブラウザに紐づく全トークンを削除します。同じブラウザで再確認しても枠は増えません。再確認前に発行したトークンは失効します。
 
 セッションは作成から90日、または最終利用から30日で失効します。ログアウトすると、現在のブラウザのセッションと関連トークンを失効させます。D1 の読み取りレプリカ API は使わず、失効を次回の照会に反映します。期限切れの行は毎日削除します。
 
-`/auth/token` が返す `expires_in` は、セッション作成から90日までの残り秒数です。無操作、ログアウト、ブラウザ数の上限によって、それより早く失効することがあります。連携先は `expires_in` だけで判断せず、各リクエストで `/auth/introspect` を呼んでください。認可コード、トークン、セッション状態の応答には `Cache-Control: no-store` を付けています。
+`/auth/token` が返す `expires_in` は、セッション作成から90日までの残り秒数です。無操作、ログアウト、ブラウザ数の上限によって、それより早く失効することがあります。`POST /auth/introspect` は、照会時点でのトークンの有効性を返します。認可コード、トークン、セッション状態の応答には `Cache-Control: no-store` を付けています。
 
-メール確認が完了すると、同じブラウザで進行中の他の確認フローも失効します。複数タブで同時に確認できるのは一つだけです。他の連携先では認証を開始し直し、認証済みブラウザの「続ける」から進めてください。
+メール確認が完了すると、同じブラウザで進行中の他の確認フローも失効します。複数タブで同時に確認できるのは一つだけです。他のタブでは認証を開始し直してください。
 
 ### 認証開始とメール送信の回数を制限する
 
@@ -69,21 +67,11 @@ pnpm run deploy:check
 
 画面は `app/` と `components/`、認証 API は `app/auth/` の Route Handler と `src/server/` にあります。`custom-worker.ts` は OpenNext の Worker に、D1 の期限切れデータを毎日削除する処理を追加します。
 
-コード交換とトークン照会を試す場合は、ローカル用の client secret も登録します。3つの secret には、それぞれ異なるテスト用ランダム値を設定してください。本番の値はローカルに自動共有されません。
-
-```sh
-pnpm exec wrangler secrets-store secret create 00000000000000000000000000000000 --name CLIENT_SECRET_MAIN --scopes workers
-pnpm exec wrangler secrets-store secret create 00000000000000000000000000000000 --name CLIENT_SECRET_ATND --scopes workers
-pnpm exec wrangler secrets-store secret create 00000000000000000000000000000000 --name CLIENT_SECRET_CS --scopes workers
-```
-
-コマンドの Store ID は、`wrangler.jsonc` に設定したローカル用 ID です。
-
 ## 本番に配備する
 
 ### メール送信とドメインを準備する
 
-Cloudflare アカウントで、`verify.tmedit.org` を Email Sending の送信ドメインとして登録してください。送信用サブドメインは個別に登録します（[サブドメインの設定](https://developers.cloudflare.com/email-service/configuration/subdomains/#add-a-subdomain-to-email-sending)）。任意の宛先への送信には、検証済み宛先だけに送る場合とは異なる利用条件があります（[Email Service の提供条件](https://developers.cloudflare.com/email-service/)）。
+Cloudflare アカウントで、`verify.tmedit.org` を Email Sending の送信ドメインとして登録してください。任意の宛先への送信には、検証済み宛先だけに送る場合とは異なる利用条件があります（[Email Service の提供条件](https://developers.cloudflare.com/email-service/)）。
 
 `wrangler.jsonc` には、送信元を `noreply@verify.tmedit.org` に限定した `EMAIL` binding と、D1、`verify.tmedit.org` の Custom Domain を設定しています。Custom Domain の DNS レコードと証明書は Cloudflare が作成します。同名ホストに既存の CNAME がある場合は、配備前に移行してください。
 
@@ -115,9 +103,9 @@ pnpm exec dotenvx encrypt --no-native --no-armor -f .env
 
 配備スクリプトが Cloudflare Secrets Store を調べ、既存の Store が1つあれば名前によらず再利用します。Store がなければ `verify` という名前で作成します。複数ある場合は `verify` を選び、選択できなければ配備を停止します。
 
-`CLIENT_SECRET_MAIN`、`CLIENT_SECRET_ATND`、`CLIENT_SECRET_CS` がなければ、それぞれ独立した64文字のランダム値を `workers` scope で作成します。既存の secret とその値は維持します。Store ID は配備時に取得して binding に設定するため、リポジトリの `wrangler.jsonc` に本番 ID を手で書く必要はありません。
+`wrangler.jsonc` に定義された client secret がなければ、それぞれ独立した64文字のランダム値を `workers` scope で作成します。既存の secret とその値は維持します。Store ID は配備時に取得して binding に設定するため、リポジトリの `wrangler.jsonc` に本番 ID を手で書く必要はありません。
 
-連携先 Worker も同じアカウントの Secrets Store に binding を設定し、対応する secret を読み取ります。本番の client secret は `.env`、`.dev.vars`、GitHub Secrets、ログには保存しません。
+本番の client secret は `.env`、`.dev.vars`、GitHub Secrets、ログには保存しません。
 
 ### GitHub Actions で配備する
 
@@ -154,155 +142,17 @@ pnpm run deploy
 | `POST /auth/link/status` | `{ flow, token }` を本文で受け、未消費のまま `ready`・`other_browser`・`invalid` を返す |
 | `POST /auth/confirm` | 同じブラウザから `{ flow, token }` を受け、認証を完了する |
 | `POST /auth/continue` | 認証済みブラウザの `{ flow }` から認可コードを発行する |
-| `POST /auth/token` | 連携先サーバーから `{ client_id, client_secret, code, code_verifier, redirect_uri }` を受ける |
-| `POST /auth/introspect` | 連携先サーバーから `{ client_id, client_secret, token }` を受ける |
+| `POST /auth/token` | `{ client_id, client_secret, code, code_verifier, redirect_uri }` を受け、認可コードをトークンに交換する |
+| `POST /auth/introspect` | `{ client_id, client_secret, token }` を受け、トークンの有効性を返す |
 | `GET /me` | 認証状態のみ返す |
 | `POST /auth/logout` | 現在の認証ブラウザと関連する全トークンを失効する |
 
-`/auth/token` と `/auth/introspect` は、連携先サーバーから呼び出してください。client secret をブラウザの JavaScript に置かないでください。
+client secret をブラウザの JavaScript に置かないでください。
 
-### 障害時は認証 Cookie を維持する
+### API のエラー応答
 
-Secrets Store の読み取り失敗や D1 障害には HTTP 500 を返します。連携先は 5xx や通信失敗を一時障害として扱い、Cookie を維持して再試行できるようにしてください。
+Secrets Store の読み取り失敗や D1 障害には HTTP 500 を返します。5xx や通信失敗は一時障害として扱い、認証 Cookie を維持して再試行してください。
 
-照会の HTTP 401 は、連携先の認証情報や設定を確認すべき応答です。正常応答で `{ active: false }` が返った場合に再認証へ進めます。
+`/auth/token` と `/auth/introspect` の HTTP 401 / `unauthorized_client` は、client secret や設定の確認が必要な応答です。認証エラーでは認可コードを消費しないため、有効期限内なら設定修正後に交換を再試行できます。コード失効や PKCE 不一致は HTTP 400 / `invalid_grant` です。照会の正常応答で `{ active: false }` が返った場合に再認証へ進めます。
 
 コード交換では、トークン作成とコード消費を D1 の batch 内で行います。途中で DB 処理が失敗し、変更が取り消された場合は、同じコードを再試行できます（[D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)）。
-
-## 連携先 Worker に認証を組み込む
-
-次の例は、認証開始、コード交換、トークン照会、ログアウトを実装したものです。連携先のアプリはこのリポジトリには含まれません。
-
-| 連携先 | `CLIENT_ID` | `APP_ORIGIN` | `secret_name` |
-| --- | --- | --- | --- |
-| tmedit.org | `tmedit` | `https://tmedit.org` | `CLIENT_SECRET_MAIN` |
-| atnd.tmedit.org | `atnd` | `https://atnd.tmedit.org` | `CLIENT_SECRET_ATND` |
-| cs.tmedit.org | `cs` | `https://cs.tmedit.org` | `CLIENT_SECRET_CS` |
-
-各連携先の `wrangler.jsonc` に、配備ログで確認した Store ID と対応する `secret_name` を設定します。`VERIFY_CLIENT_SECRET` は、secret を読み取るための binding 名です。Store ID は機密値ではありません。
-
-```jsonc
-"secrets_store_secrets": [
-  { "binding": "VERIFY_CLIENT_SECRET", "store_id": "YOUR_STORE_ID", "secret_name": "CLIENT_SECRET_MAIN" }
-]
-```
-
-コールバックは `/auth/verify/callback` に固定します。開始時に保存するフロー Cookie は、認証フローの最長20分とコードの有効期間5分を合わせて25分保持します。
-
-```ts
-interface AppEnv {
-  CLIENT_ID: "tmedit" | "atnd" | "cs";
-  APP_ORIGIN: string;
-  VERIFY_CLIENT_SECRET: SecretsStoreSecret;
-}
-
-const verify = "https://verify.tmedit.org";
-const flowCookie = "__Host-verify_flow";
-const tokenCookie = "__Host-verify_token";
-const random = () => {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
-const digest = async (value: string) => {
-  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
-const readCookie = (request: Request, name: string) => {
-  const part = (request.headers.get("Cookie") || "").split("; ").find(item => item.startsWith(`${name}=`));
-  return part ? part.slice(name.length + 1) : null;
-};
-const setCookie = (name: string, value: string, age: number) =>
-  `${name}=${value}; Path=/; Max-Age=${age}; HttpOnly; Secure; SameSite=Lax`;
-const callback = (env: AppEnv) => `${env.APP_ORIGIN}/auth/verify/callback`;
-const unavailable = () => new Response("Authentication temporarily unavailable. Please retry.", {
-  status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "5" },
-});
-async function verifyRequest(env: AppEnv, path: string, values: Record<string, string>): Promise<Response> {
-  try {
-    return await fetch(`${verify}${path}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, client_id: env.CLIENT_ID,
-        client_secret: await env.VERIFY_CLIENT_SECRET.get() }),
-    });
-  } catch {
-    return unavailable();
-  }
-}
-
-export default {
-  async fetch(request: Request, env: AppEnv): Promise<Response> {
-    const url = new URL(request.url);
-    if (url.pathname === "/auth/start" && request.method === "GET") {
-      const state = random();
-      const verifier = random();
-      const target = new URL(`${verify}/auth/authorize`);
-      target.searchParams.set("client_id", env.CLIENT_ID);
-      target.searchParams.set("redirect_uri", callback(env));
-      target.searchParams.set("state", state);
-      target.searchParams.set("code_challenge", await digest(verifier));
-      target.searchParams.set("code_challenge_method", "S256");
-      return new Response(null, { status: 302, headers: {
-        Location: target.toString(),
-        "Set-Cookie": setCookie(flowCookie, `${state}.${verifier}`, 25 * 60),
-        "Cache-Control": "no-store",
-      } });
-    }
-
-    if (url.pathname === "/auth/verify/callback" && request.method === "GET") {
-      const saved = readCookie(request, flowCookie)?.split(".");
-      const code = url.searchParams.get("code");
-      if (!saved || saved.length !== 2 || url.searchParams.get("state") !== saved[0] || !code) {
-        return new Response("Invalid state", { status: 400, headers: { "Cache-Control": "no-store" } });
-      }
-      const result = await verifyRequest(env, "/auth/token", {
-        code, code_verifier: saved[1], redirect_uri: callback(env),
-      });
-      if (result.status >= 500) return unavailable();
-      if (!result.ok) return new Response("Invalid code", { status: 400, headers: { "Cache-Control": "no-store" } });
-      let data: { access_token?: string };
-      try { data = await result.json(); } catch { return unavailable(); }
-      if (!data.access_token) return unavailable();
-      const headers = new Headers({ Location: "/", "Cache-Control": "no-store" });
-      headers.append("Set-Cookie", setCookie(flowCookie, "", 0));
-      headers.append("Set-Cookie", setCookie(tokenCookie, data.access_token, 90 * 86400));
-      return new Response(null, { status: 303, headers });
-    }
-
-    if (url.pathname === "/auth/logout" && request.method === "POST") {
-      return new Response(null, { status: 204, headers: {
-        "Set-Cookie": setCookie(tokenCookie, "", 0), "Cache-Control": "no-store",
-      } });
-    }
-
-    // 実際のアプリでは、保護対象の各リクエストでこの照会を行う。
-    const token = readCookie(request, tokenCookie);
-    if (!token) return Response.redirect(`${env.APP_ORIGIN}/auth/start`, 302);
-    const result = await verifyRequest(env, "/auth/introspect", { token });
-    if (result.status >= 500) return unavailable();
-    if (!result.ok) return new Response("Authentication client configuration error", {
-      status: 502, headers: { "Cache-Control": "no-store" },
-    });
-    let status: { active?: boolean };
-    try { status = await result.json(); } catch { return unavailable(); }
-    if (status.active === false) return Response.redirect(`${env.APP_ORIGIN}/auth/start`, 302);
-    if (status.active !== true) return unavailable();
-    return new Response("Authenticated", { headers: { "Cache-Control": "no-store" } });
-  },
-};
-```
-
-### ログアウトはブラウザから認証ホストへ送る
-
-ブラウザから認証ホストの `/auth/logout` を呼び、成功を確認してから連携先のトークン Cookie を削除します。認証ホストの Cookie はそのホストでのみ送られるため、連携先サーバーからの代理リクエストではログアウトできません。
-
-```js
-const revoked = await fetch("https://verify.tmedit.org/auth/logout", {
-  method: "POST", credentials: "include",
-  headers: { "Content-Type": "application/json" }, body: "{}",
-});
-if (!revoked.ok) throw new Error("Verify logout failed");
-await fetch("/auth/logout", { method: "POST" });
-location.assign("/");
-```
-
-連携先の Cookie が残っていても、認証ホストでトークンが失効していれば、次の照会で `{ "active": false }` が返ります。
