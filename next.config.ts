@@ -23,6 +23,7 @@ const securityHeaders = [
 const config: NextConfig = {
   agentRules: false,
   images: { unoptimized: true },
+  turbopack: { rules: { "*.html": { type: "raw" } } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

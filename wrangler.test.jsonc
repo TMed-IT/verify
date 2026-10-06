@@ -4,6 +4,7 @@
   "main": "src/server/auth.ts",
   "compatibility_date": "2026-09-24",
   "compatibility_flags": ["nodejs_compat"],
+  "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   "d1_databases": [{ "binding": "DB", "database_name": "verify" }],
   "ratelimits": [
     { "name": "FLOW_START_IP", "namespace_id": "2001", "simple": { "limit": 60, "period": 60 } },

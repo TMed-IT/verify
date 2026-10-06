@@ -3,6 +3,7 @@ import {
   LINK_SECONDS, MAX_SECONDS, normalizeEmail, randomToken, secureEqual,
   sessionActive, sha256, validChallenge, validRedirect, validState,
 } from "../policy";
+import { verificationEmail } from "./email";
 
 type Flow = {
   id: string;
@@ -189,7 +190,11 @@ async function sendLink(request: Request, env: Env, ctx: ExecutionContext): Prom
   const link = `${env.PUBLIC_ORIGIN}/link?flow=${flow.id}#token=${token}`;
   ctx.waitUntil((async () => {
     try {
-      await env.EMAIL.send({ from: "noreply@verify.tmedit.org", to: email, subject: "IT部 メールアドレスの確認", text: `次のリンクを、認証を始めたブラウザで開いてください。\n\n${link}\n\n有効期間は5分です。リンクを開いただけでは認証は完了しません。心当たりがなければ、このメールを破棄してください。` });
+      await env.EMAIL.send({
+        from: "noreply@verify.tmedit.org",
+        to: email,
+        ...verificationEmail(link, LINK_SECONDS),
+      });
     } catch {
       await env.DB.prepare("DELETE FROM magic_links WHERE token_hash=?").bind(tokenHash).run();
     }

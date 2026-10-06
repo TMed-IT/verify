@@ -67,6 +67,8 @@ pnpm run deploy:check
 
 画面は `app/` と `components/`、認証 API は `app/auth/` の Route Handler と `src/server/` にあります。`custom-worker.ts` は OpenNext の Worker に、D1 の期限切れデータを毎日削除する処理を追加します。
 
+確認メールのHTMLは `src/server/templates/verification.html` にあります。送信時に `{{LINK}}` を確認リンク、`{{MINUTES}}` を有効期間の分数に置換します。文言やデザインはこのファイルを編集してください。テキスト版は `src/server/email.ts` で管理します。
+
 ## 本番に配備する
 
 ### メール送信とドメインを準備する

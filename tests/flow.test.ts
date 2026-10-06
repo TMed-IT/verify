@@ -113,7 +113,7 @@ describe("メールリンクと認可コード", () => {
     const { flow, cookie } = await begin();
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare("UPDATE flows SET created_at=?,expires_at=? WHERE id=?").bind(now - 14 * 60, now + 60, flow).run();
-    const send = vi.fn(async (_message: { to: string; from: string; text: string }) => ({ messageId: "test" }));
+    const send = vi.fn(async (_message: { to: string; from: string; text: string; html: string }) => ({ messageId: "test" }));
     const fakeEnv = { ...testEnv, EMAIL: { send } } as Env;
     const results: string[] = [];
     for (let index = 0; index < 4; index++) {
@@ -131,6 +131,8 @@ describe("メールリンクと認可コード", () => {
     expect(sent.to).toBe("alice@example.org");
     expect(sent.from).toBe("noreply@verify.tmedit.org");
     expect(sent.text).toMatch(/\/link\?flow=[A-Za-z0-9_-]+#token=[A-Za-z0-9_-]+/);
+    const textLink = sent.text.match(/https?:\/\/\S+\/link\?flow=[A-Za-z0-9_-]+#token=[A-Za-z0-9_-]+/)![0];
+    expect(sent.html).toContain(`href="${textLink}"`);
     const extended = await env.DB.prepare("SELECT expires_at FROM flows WHERE id=?").bind(flow).first<{ expires_at: number }>();
     const linkExpiry = await env.DB.prepare("SELECT MAX(expires_at) AS expires_at FROM magic_links WHERE flow_id=?").bind(flow).first<{ expires_at: number }>();
     expect(extended?.expires_at).toBeGreaterThanOrEqual(now + LINK_SECONDS);

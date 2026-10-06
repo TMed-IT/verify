@@ -3,7 +3,15 @@ import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [cloudflareTest(async () => ({
+  plugins: [{
+    name: "html-template",
+    enforce: "pre",
+    async load(id) {
+      if (id.endsWith(".html")) {
+        return `export default ${JSON.stringify(await readFile(id, "utf8"))};`;
+      }
+    },
+  }, cloudflareTest(async () => ({
     wrangler: { configPath: "./wrangler.test.jsonc" },
     miniflare: { bindings: {
       TEST_SCHEMA: await readFile(new URL("./schema.sql", import.meta.url), "utf8"),
