@@ -530,8 +530,16 @@ describe("メールリンクと認可コード", () => {
       expect(response.status).toBe(500);
       expect(await response.json()).toEqual({ error: "internal_error" });
       expect(response.headers.get("Cache-Control")).toBe("no-store");
-      expect((await post(path, { ...values, client_secret: "incorrect-secret" })).status)
-        .toBe(path === "/auth/token" ? 400 : 401);
+      for (const invalidClient of [
+        { client_secret: "incorrect-secret" },
+        { client_secret: "" },
+        { client_id: "unknown" },
+      ]) {
+        const rejected = await post(path, { ...values, ...invalidClient });
+        expect(rejected.status).toBe(401);
+        expect(await rejected.json()).toEqual({ error: "unauthorized_client" });
+        expect(rejected.headers.get("Cache-Control")).toBe("no-store");
+      }
     }
     expect((await tokenFor(code)).response.status).toBe(200);
   });

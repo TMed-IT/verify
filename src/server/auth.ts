@@ -328,9 +328,10 @@ async function authenticateClient(input: Record<string, unknown> | null, env: En
 async function exchange(request: Request, env: Env): Promise<Response> {
   const input = await body(request);
   const client = await authenticateClient(input, env);
+  if (!client) return json({ error: "unauthorized_client" }, 401);
   const code = string(input?.code, 64);
   const verifier = string(input?.code_verifier, 128);
-  if (!client || !code || !verifier || !/^[A-Za-z0-9_-]{43}$/.test(code) || !/^[A-Za-z0-9_-]{43,128}$/.test(verifier) || input?.redirect_uri !== client.redirectUri) return json({ error: "invalid_grant" }, 400);
+  if (!code || !verifier || !/^[A-Za-z0-9_-]{43}$/.test(code) || !/^[A-Za-z0-9_-]{43,128}$/.test(verifier) || input?.redirect_uri !== client.redirectUri) return json({ error: "invalid_grant" }, 400);
   const codeHash = await sha256(code);
   const record = await env.DB.prepare("SELECT code_challenge FROM auth_codes WHERE code_hash=? AND client_id=? AND expires_at>?")
     .bind(codeHash, client.id, nowSeconds()).first<AuthCode>();
