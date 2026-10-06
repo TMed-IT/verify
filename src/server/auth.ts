@@ -149,7 +149,7 @@ async function start(request: Request, env: Env, url: URL): Promise<Response> {
   return redirect(`/start?flow=${flowId}`, cookieHeader);
 }
 
-export async function rateLimit(env: Env, key: string, windowSeconds: number, maximum: number): Promise<boolean> {
+async function rateLimit(env: Env, key: string, windowSeconds: number, maximum: number): Promise<boolean> {
   const windowStart = Math.floor(nowSeconds() / windowSeconds) * windowSeconds;
   const result = await env.DB.prepare("INSERT INTO rate_limits(bucket_key,window_start,count) VALUES(?,?,1) ON CONFLICT(bucket_key,window_start) DO UPDATE SET count=count+1 WHERE count<? RETURNING count")
     .bind(key, windowStart, maximum).first<{ count: number }>();
@@ -175,8 +175,7 @@ async function sendLink(request: Request, env: Env, ctx: ExecutionContext): Prom
   if (!flowId || !/^[A-Za-z0-9_-]{43}$/.test(flowId)) return generic();
   const flow = await flowFor(request, env, flowId);
   if (!flow) return generic();
-  const ipAllowed = await rateLimit(env, `ip:${ipKey}`, 15 * 60, 10);
-  if (!ipAllowed || !email || !allowedEmail(email, env.AUTH_EMAIL_ALLOW_REGEX)) return generic();
+  if (!email || !allowedEmail(email, env.AUTH_EMAIL_ALLOW_REGEX)) return generic();
   const emailKey = await hmac(env.HMAC_SECRET, "email", email);
   const emailAllowed = await rateLimit(env, `email:${emailKey}`, 60 * 60, 3);
   if (!emailAllowed) return generic();

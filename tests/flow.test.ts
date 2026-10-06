@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import { hmac, IDLE_SECONDS, LINK_SECONDS, MAX_SECONDS, randomToken, sha256 } from "../src/policy";
-import worker, { rateLimit } from "../src/server/auth";
+import worker from "../src/server/auth";
 
 const base = env.PUBLIC_ORIGIN;
 const origin = { Origin: base };
@@ -150,14 +150,12 @@ describe("メールリンクと認可コード", () => {
     expect(send).toHaveBeenCalledTimes(3);
   });
 
-  it("接続元の送信枠を制限し、対象外メールでも同じ応答を返す", async () => {
+  it("対象外メールでも同じ応答を返す", async () => {
     const { flow, cookie } = await begin();
     const outside = await post("/auth/request-link", { flow, email: "not-allowed@other.org" }, cookie);
     const malformed = await post("/auth/request-link", { flow, email: "invalid" }, cookie);
     expect(outside.status).toBe(200);
     expect(await outside.json()).toEqual(await malformed.json());
-    for (let index = 0; index < 10; index++) expect(await rateLimit(env, "test-ip", 900, 10)).toBe(true);
-    expect(await rateLimit(env, "test-ip", 900, 10)).toBe(false);
   });
 
   it.each(["IP", "ブラウザ"] as const)("送信要求の%s制限を超えた場合は D1 にアクセスしない", async (kind) => {
@@ -188,20 +186,31 @@ describe("メールリンクと認可コード", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("D1 の IP 上限後はカウンターと新しいメール用バケットを書き込まない", async () => {
-    const { flow, cookie } = await begin();
+  it("共有 IP から10回を超えて送信でき、メールの上限はブラウザ間で共有する", async () => {
     const ip = "192.0.2.3";
-    const key = `ip:${await hmac(env.HMAC_SECRET, "ip", ip)}`;
-    for (let i = 0; i < 10; i++) await rateLimit(env, key, 900, 10);
-    const ctx = createExecutionContext();
-    const response = await worker.fetch(new Request(`${base}/auth/request-link`, {
-      method: "POST", headers: { ...origin, Cookie: cookie, "Content-Type": "application/json", "CF-Connecting-IP": ip },
-      body: JSON.stringify({ flow, email: "new@example.org" }),
-    }), testEnv, ctx);
-    await waitOnExecutionContext(ctx);
-    expect(await response.json()).toEqual({ ok: true });
-    expect((await env.DB.prepare("SELECT bucket_key,count FROM rate_limits").all()).results)
-      .toEqual([{ bucket_key: key, count: 10 }]);
+    const send = vi.fn(async () => ({ messageId: "test" }));
+    const fakeEnv = { ...testEnv, EMAIL: { send } } as Env;
+    for (let index = 0; index < 12; index++) {
+      const ctx = createExecutionContext();
+      const started = await worker.fetch(new Request(`${base}/`, {
+        headers: { "CF-Connecting-IP": ip },
+      }), fakeEnv, ctx);
+      expect(started.status).toBe(303);
+      const flow = new URL(started.headers.get("Location")!, base).searchParams.get("flow")!;
+      const cookie = started.headers.get("Set-Cookie")!.split(";")[0];
+      const email = index < 3 || index === 11 ? "shared@example.org" : `student${index}@example.org`;
+      const response = await worker.fetch(new Request(`${base}/auth/request-link`, {
+        method: "POST", headers: { ...origin, Cookie: cookie, "Content-Type": "application/json", "CF-Connecting-IP": ip },
+        body: JSON.stringify({ flow, email }),
+      }), fakeEnv, ctx);
+      await waitOnExecutionContext(ctx);
+      expect(await response.json()).toEqual({ ok: true });
+      expect(send).toHaveBeenCalledTimes(Math.min(index + 1, 11));
+    }
+    const buckets = (await env.DB.prepare("SELECT bucket_key,count FROM rate_limits").all<{ bucket_key: string; count: number }>()).results;
+    const sharedEmailKey = `email:${await hmac(env.HMAC_SECRET, "email", "shared@example.org")}`;
+    expect(buckets.every(bucket => bucket.bucket_key.startsWith("email:"))).toBe(true);
+    expect(buckets.find(bucket => bucket.bucket_key === sharedEmailKey)?.count).toBe(3);
   });
 
   it("別ブラウザでは未消費、元のブラウザでは一度だけ確認できる", async () => {

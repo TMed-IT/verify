@@ -30,9 +30,9 @@ API はメールアドレスや共通の匿名 ID を返しません。`GET /me`
 
 ### 認証開始とメール送信の回数を制限する
 
-D1 にアクセスする前に、Cloudflare の Rate Limiting binding で認証開始とメール送信要求を制限します。それぞれ接続元 IP の HMAC ごとに1分60回、既存のブラウザ Cookie ごとに1分5回までです。この上限は Cloudflare の拠点ごとに適用されます（[Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)）。
+D1 にアクセスする前に、Cloudflare の Rate Limiting binding で認証開始とメール送信要求を制限します。それぞれ接続元 IP の HMAC ごとに1分600回、既存のブラウザ Cookie ごとに1分5回までです。大学などの共有回線を考慮し、IP 単位の制限は大量アクセス対策として緩めに設定しています。この上限は Cloudflare の拠点ごとに適用されます（[Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)）。
 
-認証開始の制限を超えると、D1 にフローを作らず `429` と `Retry-After: 60` を返します。メール送信要求の制限を超えた場合は、通常と同じ応答を返します。実際の送信回数は D1 でも判定し、メールごとに1時間3回、IP ごとに15分10回に制限します。上限に達した D1 カウンターは更新しません。
+認証開始の制限を超えると、D1 にフローを作らず `429` と `Retry-After: 60` を返します。メール送信要求の制限を超えた場合は、通常と同じ応答を返します。実際の送信回数は D1 でも判定し、メールごとに1時間3回に制限します。この枠はブラウザや IP が変わっても共有されます。上限に達した D1 カウンターは更新しません。
 
 Rate Limiting の namespace ID は、次の固定値を使います。
 
