@@ -1,6 +1,6 @@
 {
   "name": "verify",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "IT部のメールリンク認証サービス",
   "type": "module",
   "directories": {
