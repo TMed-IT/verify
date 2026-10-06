@@ -134,25 +134,4 @@ pnpm run deploy
 
 ## API
 
-| API | 用途 |
-| --- | --- |
-| `GET /auth/authorize` | `client_id`, `redirect_uri`, `state`, `code_challenge`, `code_challenge_method=S256` を受ける |
-| `POST /auth/request-link` | ブラウザから `{ flow, email }` を受ける |
-| `GET /link?flow=…#token=…` | メールのリンク。フラグメントはサーバーへ送られない |
-| `POST /auth/link/status` | `{ flow, token }` を本文で受け、未消費のまま `ready`・`other_browser`・`invalid` を返す |
-| `POST /auth/confirm` | 同じブラウザから `{ flow, token }` を受け、認証を完了する |
-| `POST /auth/continue` | 認証済みブラウザの `{ flow }` から認可コードを発行する |
-| `POST /auth/token` | `{ client_id, client_secret, code, code_verifier, redirect_uri }` を受け、認可コードをトークンに交換する |
-| `POST /auth/introspect` | `{ client_id, client_secret, token }` を受け、トークンの有効性を返す |
-| `GET /me` | 認証状態のみ返す |
-| `POST /auth/logout` | 現在の認証ブラウザと関連する全トークンを失効する |
-
-client secret をブラウザの JavaScript に置かないでください。
-
-### API のエラー応答
-
-Secrets Store の読み取り失敗や D1 障害には HTTP 500 を返します。5xx や通信失敗は一時障害として扱い、認証 Cookie を維持して再試行してください。
-
-`/auth/token` と `/auth/introspect` の HTTP 401 / `unauthorized_client` は、client secret や設定の確認が必要な応答です。認証エラーでは認可コードを消費しないため、有効期限内なら設定修正後に交換を再試行できます。コード失効や PKCE 不一致は HTTP 400 / `invalid_grant` です。照会の正常応答で `{ active: false }` が返った場合に再認証へ進めます。
-
-コード交換では、トークン作成とコード消費を D1 の batch 内で行います。途中で DB 処理が失敗し、変更が取り消された場合は、同じコードを再試行できます（[D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)）。
+使い方は [API の使い方](docs/api.md) を参照してください。
