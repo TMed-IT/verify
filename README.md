@@ -83,6 +83,8 @@ Cloudflare アカウントで、`verify.tmedit.org` を Email Sending の送信�
 
 Cloudflare ダッシュボードの **Email Service → Sending domains → verify.tmedit.org → Email preview** を無効にしてください。Email Service は配送先アドレスと送信履歴を扱います。本文プレビューが有効だと、確認リンクを含む本文も保持されます。Worker にはメール、リンク、コード、トークンをログに出す処理を入れていません。ログ設定でもリクエスト本文や機密情報を含むクエリを記録しないでください。
 
+エラーは **Workers & Pages → verify → Observability** で確認できます。API処理、メール送信、送信失敗時のリンク削除で発生したエラーは、固定の `event` 名を記録します。例外本文は記録しません。Workers Logs のサンプリング率は100%とし、実行ログとトレースは無効、クエリ文字列はマスクする設定です（[Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/)）。
+
 ### `.env` に本番設定を保存する
 
 D1 ID、メール許可正規表現、HMAC 鍵は、`auth` と同じく dotenvx で暗号化した `.env` に保存します。暗号化済みの `.env` は公開リポジトリに含めます。復号鍵の `.env.keys` は Git に入れず、安全な場所に保管してください。鍵を失うと設定を復号できません。

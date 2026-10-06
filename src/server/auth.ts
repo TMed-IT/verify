@@ -196,7 +196,12 @@ async function sendLink(request: Request, env: Env, ctx: ExecutionContext): Prom
         ...verificationEmail(link, LINK_SECONDS),
       });
     } catch {
-      await env.DB.prepare("DELETE FROM magic_links WHERE token_hash=?").bind(tokenHash).run();
+      console.error({ event: "verification_email_send_failed" });
+      try {
+        await env.DB.prepare("DELETE FROM magic_links WHERE token_hash=?").bind(tokenHash).run();
+      } catch {
+        console.error({ event: "verification_email_cleanup_failed" });
+      }
     }
   })());
   return generic();
@@ -440,6 +445,7 @@ export default {
       return json({ error: "not_found" }, 404);
     } catch {
       // Never log the request URL, address, token, or email service exception.
+      console.error({ event: "auth_request_failed" });
       return json({ error: "internal_error" }, 500);
     }
   },
