@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Shell } from "@/components/shell";
+import { HomeButton } from "@/components/home-button";
 import { listenForAuthCompletion } from "@/src/browser/auth-tabs";
 
 type View = "checking" | "form" | "existing" | "sent" | "invalid" | "error";
@@ -126,6 +127,7 @@ export default function StartPage() {
       )}
       {view === "error" && <button type="button" onClick={() => void checkFlow(flow)}>再試行</button>}
       <p className="message" role="alert">{message}</p>
+      {(view === "checking" || view === "sent" || view === "invalid") && <HomeButton />}
       <p className="fine">メールの受信確認だけを行います。氏名やメールアドレスは収集されません。</p>
     </Shell>
   );

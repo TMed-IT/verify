@@ -53,11 +53,11 @@ label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 8px; }
 input { display: block; width: 100%; padding: 15px 14px; border: 1px solid #3b426b; border-radius: 11px; background: #0b0e25; color: #f7f7fb; font: inherit; font-size: 15px; outline: none; }
 input:focus { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(165, 180, 252, .15); }
 
-button { display: block; width: 100%; border: 1px solid #6366f1; border-radius: 11px; background: #6366f1; color: #fff; padding: 15px 18px; margin-top: 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; }
-button:hover { background: #7779f6; border-color: #7779f6; }
+button, .button { display: block; width: 100%; border: 1px solid #6366f1; border-radius: 11px; background: #6366f1; color: #fff; padding: 15px 18px; margin-top: 16px; font: inherit; font-size: 14px; font-weight: 600; text-align: center; cursor: pointer; transition: background .15s, border-color .15s; }
+button:hover, .button:hover { background: #7779f6; border-color: #7779f6; text-decoration: none; }
 button:disabled { opacity: .6; cursor: wait; }
-button.secondary { background: #1b2043; border-color: #30365e; }
-button.secondary:hover { background: #272d57; }
+button.secondary, .button.secondary { background: #1b2043; border-color: #30365e; }
+button.secondary:hover, .button.secondary:hover { background: #272d57; }
 
 .message { margin: 14px 0 0; color: #fcd34d; font-size: 13px; line-height: 1.5; }
 .message:empty { display: none; }

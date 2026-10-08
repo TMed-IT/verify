@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { HomeButton } from "@/components/home-button";
 import { handoffAuthCompletion } from "@/src/browser/auth-tabs";
 
 type View = "checking" | "ready" | "other" | "invalid" | "error" | "complete";
@@ -125,6 +126,7 @@ export default function LinkPage() {
         </div>
       )}
       <p className="message" role="alert">{message}</p>
+      {(view === "checking" || view === "invalid") && <HomeButton />}
     </Shell>
   );
 }
