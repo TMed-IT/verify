@@ -47,7 +47,10 @@ namespace ID はアカウント内で共有されるため、本番配備前に�
 
 ## ローカルで開発する
 
+Node.js 24.22.1（LTS）と、`package.json` の `packageManager` に指定した pnpm を使います。CI も `.nvmrc` の Node.js バージョンで実行します。
+
 ```sh
+nvm use
 pnpm install --frozen-lockfile
 cp .dev.vars.example .dev.vars
 # .dev.vars の値をローカル用に設定する
