@@ -76,6 +76,22 @@ pnpm run deploy:check
 
 Worker のビルド時には、本番ビルドの Route Handler からHTMLメールを組み立て、送信処理まで到達することを確認します。検証では送信先とデータベースを模擬するため、実際のメールは送信しません。
 
+## 依存関係の脆弱性を診断する
+
+[OSV-Scanner](https://google.github.io/osv-scanner/) で `pnpm-lock.yaml` の本番用・開発用の依存関係を、間接依存も含めて診断します。
+
+GitHub Actions は `main` 向けのPR、マージキュー、毎週月曜9:17（日本時間）、配備前に診断します。Actions の **OSV vulnerability scan → Run workflow** から手動でも実行できます。重大度を問わず脆弱性を検出した場合や診断に失敗した場合は、チェックが失敗し、配備を停止します。
+
+診断結果は Actions の実行ログとSARIF形式の成果物で確認できます。GitHub Code Security の有効化は不要です。CI では OSV-Scanner v2.7.0 の公式ワークフローをコミットSHAで固定しています。
+
+手元で診断する場合は、[公式のインストール手順](https://google.github.io/osv-scanner/installation/)に従って OSV-Scanner v2 を導入し、次を実行します。診断には OSV へのネットワーク接続が必要です。
+
+```sh
+# macOS（Homebrew）
+brew install osv-scanner
+pnpm run audit:osv
+```
+
 ## 本番に配備する
 
 ### メール送信とドメインを準備する

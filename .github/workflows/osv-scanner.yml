@@ -1,0 +1,29 @@
+name: OSV vulnerability scan
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    branches: [main]
+  schedule:
+    # Every Monday at 09:17 JST (00:17 UTC).
+    - cron: "17 0 * * 1"
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@0a65f82af05cd58cf587827b0bb0489548c18346 # v2.7.0
+    with:
+      scan-args: |-
+        --lockfile=./pnpm-lock.yaml
+      fail-on-vuln: true
+      # Keep reports in Actions artifacts without requiring GitHub Code Security.
+      upload-sarif: false

@@ -12,6 +12,7 @@
     "build:worker": "node scripts/build.mjs && node --test checks/built-email.mjs",
     "preview": "opennextjs-cloudflare preview",
     "typecheck": "next typegen && tsc --noEmit",
+    "audit:osv": "osv-scanner scan source --lockfile=pnpm-lock.yaml",
     "test": "vitest run && node --test checks/config.mjs checks/secrets-store.mjs checks/auth-tabs.mjs",
     "deploy:check": "pnpm build:worker && wrangler deploy --dry-run",
     "deploy:config:check": "dotenvx run --no-native --no-armor --strict -- node scripts/deploy.mjs --check",
